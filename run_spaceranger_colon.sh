@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#################### 固定路径与参数 ####################
+#################### Fixed paths and parameters ####################
 SRC=/mnt/taobo.hu/long/10X_datasets/Visium/Visium_HD/Visium_HD_Human_Colon_Cancer
 SAMPLE=Visium_HD_Human_Colon_Cancer
 
-OUT=/data/taobo.hu/5K_HD            # 可写输出根目录，改成 Colon_HD
-ID=colon_prime5k_sr4_cell             # Space Ranger --id，自定义即可
-REF=$HOME/ref/refdata-gex-GRCh38-2024-A  # 参考基因组目录（保持不变）
+OUT=/data/taobo.hu/5K_HD            # writable output root directory (change to Colon_HD)
+ID=colon_prime5k_sr4_cell           # Space Ranger --id (customizable)
+REF=$HOME/ref/refdata-gex-GRCh38-2024-A  # reference genome directory (unchanged)
 
-CORES=16          # CPU 线程
-MEM=128           # 内存 (GB)
+CORES=16          # CPU threads
+MEM=128           # memory (GB)
 
-#################### 创建工作目录 ####################
+#################### Create working directories ####################
 mkdir -p "$OUT/fastqs" "$OUT/tmp"
 
-#################### 1) 解包 FASTQ ###################
+#################### 1) Unpack FASTQ ####################
 echo "[Step] untar FASTQ..."
 tar -xf "$SRC/${SAMPLE}_fastqs.tar" -C "$OUT/fastqs"
 
-#################### 2) 转 BTF → TIFF ################
+#################### 2) Convert BTF → TIFF ####################
 echo "[Step] convert BTF → TIFF..."
 BFDIR=$OUT/tmp/bftools
 TIFF=$OUT/${SAMPLE}_HiRes_HE.tif
 
-# Java 运行时（缺则临时装一份）
+# Java runtime (install temporarily if missing)
 if ! command -v java &>/dev/null; then
   echo "  [Info] installing OpenJDK17 via conda..."
   conda install -qy -c conda-forge openjdk=17
 fi
 
-# bfconvert（如无则下载）
+# bfconvert (download if missing)
 if [ ! -x "$BFDIR/bfconvert" ]; then
   echo "  [Info] downloading Bio-Formats CLI ..."
   mkdir -p "$BFDIR"
@@ -41,7 +41,7 @@ if [ ! -x "$BFDIR/bfconvert" ]; then
 fi
 export PATH="$BFDIR:$PATH"
 
-# 若 TIFF 已存在且非空就跳过；否则重新转换
+# Skip if TIFF already exists and is non-empty; otherwise convert
 if [ ! -s "$TIFF" ]; then
   echo "  [Info] generating HiRes_HE.tif ..."
   bfconvert "$SRC/${SAMPLE}_tissue_image.btf" "$TIFF"
@@ -49,7 +49,7 @@ else
   echo "  [Info] HiRes_HE.tif already exists — skip conversion"
 fi
 
-#################### 3) 运行 Space Ranger #############
+#################### 3) Run Space Ranger ####################
 echo "[Step] run spaceranger count..."
 cd "$OUT"
 
@@ -65,4 +65,4 @@ spaceranger count \
   --localcores="$CORES" \
   --localmem="$MEM"
 
-echo "==> 运行完成！结果目录:  $OUT/$ID/outs/"
+echo "==> DONE! Output directory:  $OUT/$ID/outs/"
